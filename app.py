@@ -1,6 +1,7 @@
 '''
 Flask Application
 '''
+from dataclasses import asdict
 from flask import Flask, jsonify, request
 from models import Experience, Education, Skill
 
@@ -72,7 +73,7 @@ def skill():
     Handles Skill requests
     '''
     if request.method == 'GET':
-        return jsonify({})
+        return jsonify([asdict(s) for s in data["skill"]])
 
     if request.method == 'POST':
         return jsonify({})
