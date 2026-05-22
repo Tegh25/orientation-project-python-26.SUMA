@@ -45,7 +45,18 @@ def experience():
     Handle experience requests
     '''
     if request.method == 'GET':
-        return jsonify()
+        experience_list = [
+            {
+                "title": exp.title,
+                "company": exp.company,
+                "start_date": exp.start_date,
+                "end_date": exp.end_date,
+                "description": exp.description,
+                "logo": exp.logo
+            }
+            for exp in data['experience']
+        ]
+        return jsonify(experience_list)
 
     if request.method == 'POST':
         new_experience = Experience(
@@ -58,7 +69,7 @@ def experience():
         )
         data['experience'].append(new_experience)
         index = len(data['experience']) - 1
-        return jsonify({"index": index})
+        return jsonify({"id": index})
 
     return jsonify({})
 
