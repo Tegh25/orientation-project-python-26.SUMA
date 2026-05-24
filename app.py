@@ -39,7 +39,7 @@ def hello_world():
     return jsonify({"message": "Hello, World!"})
 
 
-@app.route('/resume/experience', methods=['GET', 'POST'])
+@app.route('/resume/experience', methods=['GET', 'POST', 'DELETE'])
 def experience():
     '''
     Handle experience requests
@@ -50,8 +50,21 @@ def experience():
     if request.method == 'POST':
         return jsonify({})
 
-    return jsonify({})
+    if request.method == 'DELETE':
+        body = request.get_json()
 
+        if not body or 'id' not in body:
+            return jsonify({"error": "ID is required for deletion"}), 400
+        item_id = body['id']
+        try:
+            item_id = int(item_id)
+        except (ValueError, TypeError):
+            return jsonify({"error": "ID must be an integer"}), 400
+        if item_id < 0 or item_id >= len(data["experience"]):
+            return jsonify({"error": "ID is out of range"}), 400
+        data["experience"].pop(item_id)
+        return jsonify({"deleted": item_id}), 200
+    return jsonify({})
 @app.route('/resume/education', methods=['GET', 'POST'])
 def education():
     '''
