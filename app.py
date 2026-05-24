@@ -108,29 +108,35 @@ def education():
     return jsonify({})
 
 
+def _get_skill():
+    index_param = request.args.get('index')
+    if index_param is None:
+        return jsonify([asdict(s) for s in data["skill"]])
+    try:
+        index = int(index_param)
+    except ValueError:
+        return jsonify({"error": "index must be an integer"}), 400
+    if index < 0 or index >= len(data["skill"]):
+        return jsonify({"error": "skill not found"}), 404
+    return jsonify(asdict(data["skill"][index]))
+
+
+def _post_skill():
+    try:
+        new_skill = Skill(**request.get_json())
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid skill payload"}), 400
+    data["skill"].append(new_skill)
+    return jsonify({"id": len(data["skill"]) - 1})
+
+
 @app.route('/resume/skill', methods=['GET', 'POST'])
 def skill():
     '''
     Handles Skill requests
     '''
     if request.method == 'GET':
-        index_param = request.args.get('index')
-        if index_param is not None:
-            try:
-                index = int(index_param)
-            except ValueError:
-                return jsonify({"error": "index must be an integer"}), 400
-            if index < 0 or index >= len(data["skill"]):
-                return jsonify({"error": "skill not found"}), 404
-            return jsonify(asdict(data["skill"][index]))
-        return jsonify([asdict(s) for s in data["skill"]])
-
+        return _get_skill()
     if request.method == 'POST':
-        try:
-            new_skill = Skill(**request.get_json())
-        except (TypeError, ValueError):
-            return jsonify({"error": "Invalid skill payload"}), 400
-        data["skill"].append(new_skill)
-        return jsonify({"id": len(data["skill"]) - 1})
-
+        return _post_skill()
     return jsonify({})
