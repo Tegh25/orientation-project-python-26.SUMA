@@ -92,7 +92,7 @@ def get_experience(index):
         })
     return jsonify({"error": "Experience not found"}), 404
 
-@app.route('/resume/education', methods=['GET', 'POST'])
+@app.route('/resume/education', methods=['GET', 'POST', 'DELETE'])
 def education():
     '''
     Handles education requests
