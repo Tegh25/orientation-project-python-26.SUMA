@@ -104,6 +104,8 @@ def education():
         education_entry = Education(**request.get_json())
         data['education'].append(education_entry)
         return jsonify({'id': len(data['education']) - 1})
+    if request.method == 'DELETE':
+        return _delete_education(request.get_json())
 
     return jsonify({})
 
@@ -134,3 +136,16 @@ def skill():
         return jsonify({"id": len(data["skill"]) - 1})
 
     return jsonify({})
+
+def _delete_education(body):
+    if not body or 'id' not in body:
+        return jsonify({"error": "ID is required for deletion"}), 400
+    try:
+        item_id = int(body['id'])
+    except (ValueError, TypeError):
+        return jsonify({"error": "ID must be an integer"}), 400
+    if item_id < 0 or item_id >= len(data['education']):
+        return jsonify({"error": "ID out of range"}), 404
+    data['education'].pop(item_id)
+    return jsonify({"deleted": item_id}), 200
+    
