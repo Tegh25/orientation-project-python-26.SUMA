@@ -115,7 +115,7 @@ def test_delete_education():
         and edu['grade'] == example_education['grade']
         and edu['logo'] == example_education['logo']
     )
-    
+
 def test_delete_experience():
     """
     Add an experience, delete it by returned index id, 
