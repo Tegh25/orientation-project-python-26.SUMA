@@ -104,9 +104,49 @@ def test_delete_skill():
     after = client.get('/resume/skill')
     assert after.status_code == 200
     assert len(after.json) == before_count
-
+    
     assert not any(
         skill for skill in after.json if skill['name'] == example_skill['name']
         and skill['proficiency'] == example_skill['proficiency']
         and skill['logo'] == example_skill['logo']
+    )
+def test_delete_experience():
+    """
+    Add an experience, delete it by returned index id, 
+    and verify count goes down and does not contain the specific experience added.
+    """
+    client = app.test_client()
+
+    example_experience = {
+        "title": "Software Developer for deleting",
+        "company": "Delete Test Co 123",
+        "start_date": "October 2022",
+        "end_date": "Present",
+        "description": "Writing JavaScript Code",
+        "logo": "example-logo.png"
+    }
+
+    before = client.get('/resume/experience')
+    assert before.status_code == 200
+    before_count = len(before.json)
+
+    post_response = client.post('/resume/experience', json=example_experience)
+    assert post_response.status_code == 200
+    item_id = post_response.json['id']
+
+    delete_response = client.delete('/resume/experience', json={"id": item_id})
+    assert delete_response.status_code == 200
+    assert delete_response.json["deleted"] == item_id
+
+    after = client.get('/resume/experience')
+    assert after.status_code == 200
+    assert len(after.json) == before_count
+    
+    assert not any(
+        exp for exp in after.json if exp['title'] == example_experience['title'] and
+        exp['company'] == example_experience['company'] and
+        exp['start_date'] == example_experience['start_date'] and
+        exp['end_date'] == example_experience['end_date'] and
+        exp['description'] == example_experience['description'] and
+        exp['logo'] == example_experience['logo']
     )
