@@ -40,7 +40,7 @@ def hello_world():
     return jsonify({"message": "Hello, World!"})
 
 
-@app.route('/resume/experience', methods=['GET', 'POST'])
+@app.route('/resume/experience', methods=['GET', 'POST', 'DELETE'])
 def experience():
     '''
     Handle experience requests
@@ -72,6 +72,8 @@ def experience():
         index = len(data['experience']) - 1
         return jsonify({"id": index})
 
+    if request.method == 'DELETE':
+        return _delete_experience(request.get_json())
     return jsonify({})
 
 
@@ -110,31 +112,37 @@ def education():
     return jsonify({})
 
 
+def _get_skill():
+    index_param = request.args.get('index')
+    if index_param is None:
+        return jsonify([asdict(s) for s in data["skill"]])
+    try:
+        index = int(index_param)
+    except ValueError:
+        return jsonify({"error": "index must be an integer"}), 400
+    if index < 0 or index >= len(data["skill"]):
+        return jsonify({"error": "skill not found"}), 404
+    return jsonify(asdict(data["skill"][index]))
+
+
+def _post_skill():
+    try:
+        new_skill = Skill(**request.get_json())
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid skill payload"}), 400
+    data["skill"].append(new_skill)
+    return jsonify({"id": len(data["skill"]) - 1})
+
+
 @app.route('/resume/skill', methods=['GET', 'POST'])
 def skill(): # pylint: disable=too-many-return-statements
     '''
     Handles Skill requests
     '''
     if request.method == 'GET':
-        index_param = request.args.get('index')
-        if index_param is not None:
-            try:
-                index = int(index_param)
-            except ValueError:
-                return jsonify({"error": "index must be an integer"}), 400
-            if index < 0 or index >= len(data["skill"]):
-                return jsonify({"error": "skill not found"}), 404
-            return jsonify(asdict(data["skill"][index]))
-        return jsonify([asdict(s) for s in data["skill"]])
-
+        return _get_skill()
     if request.method == 'POST':
-        try:
-            new_skill = Skill(**request.get_json())
-        except (TypeError, ValueError):
-            return jsonify({"error": "Invalid skill payload"}), 400
-        data["skill"].append(new_skill)
-        return jsonify({"id": len(data["skill"]) - 1})
-
+        return _post_skill()
     return jsonify({})
 
 def _delete_education(body):
@@ -148,4 +156,15 @@ def _delete_education(body):
         return jsonify({"error": "ID out of range"}), 404
     data['education'].pop(item_id)
     return jsonify({"deleted": item_id}), 200
-    
+def _delete_experience(body):
+    if not body or 'id' not in body:
+        return jsonify({"error": "ID is required for deletion"}), 400
+    try:
+        item_id = int(body['id'])
+    except (ValueError, TypeError):
+        return jsonify({"error": "ID must be an integer"}), 400
+    if item_id < 0 or item_id >= len(data['experience']):
+        return jsonify({"error": "ID out of range"}), 404
+    data['experience'].pop(item_id)
+    return jsonify({"deleted": item_id}), 200
+  
