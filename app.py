@@ -1,13 +1,19 @@
 '''
 Flask Application
 '''
+import re
 from dataclasses import asdict
 from flask import Flask, jsonify, request
-from models import Experience, Education, Skill
+from models import Experience, Education, Skill, UserInfo
 
 app = Flask(__name__)
 
 data = {
+    "user_info": UserInfo(
+        "John Doe",
+        "+1234567890",
+        "john@example.com"
+    ),
     "experience": [
         Experience("Software Developer",
                    "A Cool Company",
@@ -168,3 +174,37 @@ def _delete_skill(body):
         return jsonify({"error": "ID is out of range"}), 400
     data["skill"].pop(item_id)
     return jsonify({"deleted": item_id}), 200
+
+@app.route('/resume/user_info', methods=['GET', 'POST', 'PUT'])
+def user_info():
+    '''
+    Handles user_info requests
+    '''
+    if request.method == 'GET':
+        return jsonify(asdict(data['user_info']))
+
+    if request.method in ['POST', 'PUT']:
+        req_data = request.get_json()
+        name = req_data.get('name')
+        phone_number = req_data.get('phone_number')
+        email_address = req_data.get('email_address')
+
+        if not all([name, phone_number, email_address]):
+            return jsonify({"error": "Missing fields"}), 400
+
+        # Enforce international country code (e.g. +1...)
+        if not re.match(r'^\+\d{1,15}$', phone_number):
+            return jsonify({
+                "error": "Phone number must include international country code (e.g. +123456789)"
+            }), 400
+
+        data['user_info'] = UserInfo(
+            name=name,
+            phone_number=phone_number,
+            email_address=email_address
+        )
+        return jsonify({
+            "message": "User info updated successfully",
+            "data": asdict(data['user_info'])
+        })
+    return jsonify({})

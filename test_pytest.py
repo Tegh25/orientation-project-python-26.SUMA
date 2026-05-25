@@ -148,3 +148,57 @@ def test_delete_experience():
         exp['description'] == example_experience['description'] and
         exp['logo'] == example_experience['logo']
     )
+
+def test_get_user_info():
+    '''
+    Fetch user info and check if it returns matching data
+    '''
+    response = app.test_client().get('/resume/user_info')
+    assert response.status_code == 200
+    assert "name" in response.json
+    assert "phone_number" in response.json
+    assert "email_address" in response.json
+
+def test_update_user_info():
+    '''
+    Update the user info and verify that it changes.
+    '''
+    client = app.test_client()
+    new_user_info = {
+        "name": "Jane Doe",
+        "phone_number": "+0987654321",
+        "email_address": "jane@example.com"
+    }
+
+    response = client.put('/resume/user_info', json=new_user_info)
+    assert response.status_code == 200
+    assert response.json["data"] == new_user_info
+
+    get_response = client.get('/resume/user_info')
+    assert get_response.json == new_user_info
+
+def test_user_info_missing_fields():
+    '''
+    Test updating user info with missing fields
+    '''
+    client = app.test_client()
+    incomplete_info = {
+        "name": "No Phone Number"
+    }
+    response = client.post('/resume/user_info', json=incomplete_info)
+    assert response.status_code == 400
+    assert response.json["error"] == "Missing fields"
+
+def test_user_info_invalid_phone():
+    '''
+    Test updating user info with an invalid phone number
+    '''
+    client = app.test_client()
+    invalid_phone_info = {
+        "name": "Jane",
+        "phone_number": "12345678", # Missing '+'
+        "email_address": "jane@example.com"
+    }
+    response = client.put('/resume/user_info', json=invalid_phone_info)
+    assert response.status_code == 400
+    assert "Phone number must include international country code" in response.json["error"]
