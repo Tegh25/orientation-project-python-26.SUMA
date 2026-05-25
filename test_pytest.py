@@ -72,3 +72,41 @@ def test_skill():
 
     response = app.test_client().get('/resume/skill')
     assert response.json[item_id] == example_skill
+
+def test_delete_skill():
+    '''
+    Add new skill and then delete it using the id. 
+
+    Check that the count of skill entries is the same as before adding and deletion. 
+
+    And verify that the return does not contain the deleted skill entry.
+    '''
+    client = app.test_client()
+
+    example_skill = {
+        "name": "Testing Skill",
+        "proficiency": "1-2 years",
+        "logo": "example-logo.png"
+    }
+
+    before = client.get('/resume/skill')
+    assert before.status_code == 200
+    before_count = len(before.json)
+
+    post_response = client.post('/resume/skill', json=example_skill)
+    assert post_response.status_code == 200
+    item_id = post_response.json['id']
+
+    delete_response = client.delete('/resume/skill', json={"id": item_id})
+    assert delete_response.status_code == 200
+    assert delete_response.json["deleted"] == item_id
+
+    after = client.get('/resume/skill')
+    assert after.status_code == 200
+    assert len(after.json) == before_count
+
+    assert not any(
+        skill for skill in after.json if skill['name'] == example_skill['name']
+        and skill['proficiency'] == example_skill['proficiency']
+        and skill['logo'] == example_skill['logo']
+    )
