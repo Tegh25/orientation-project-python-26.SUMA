@@ -4,9 +4,11 @@ Flask Application
 import re
 from dataclasses import asdict
 from flask import Flask, jsonify, request
+from spellchecker import SpellChecker
 from models import Experience, Education, Skill, UserInfo
 
 app = Flask(__name__)
+spellchecker = SpellChecker()
 
 data = {
     "user_info": UserInfo(
@@ -214,3 +216,52 @@ def user_info():
             "data": asdict(data['user_info'])
         })
     return jsonify({})
+
+
+def _apply_spelling_correction(word):
+    correction = spellchecker.correction(word)
+    if correction is None:
+        return word
+    if word.isupper():
+        return correction.upper()
+    if word[0].isupper():
+        return correction.capitalize()
+    return correction
+
+
+def _correct_text_spelling(text):
+    return re.sub(r"[A-Za-z]+", lambda m: _apply_spelling_correction(m.group(0)), text)
+
+
+def _collect_spelling_results():
+    results = []
+
+    def check_value(value):
+        if not isinstance(value, str):
+            return
+        corrected = _correct_text_spelling(value)
+        if corrected != value:
+            results.append({"before": value, "after": corrected})
+
+    for exp in data["experience"]:
+        check_value(exp.title)
+        check_value(exp.company)
+        check_value(exp.description)
+
+    for edu in data["education"]:
+        check_value(edu.course)
+        check_value(edu.school)
+
+    for skill_entry in data["skill"]:
+        check_value(skill_entry.name)
+        check_value(skill_entry.proficiency)
+
+    return results
+
+
+@app.route('/resume/spellcheck', methods=['GET'])
+def spellcheck():
+    '''
+    Returns spelling correction suggestions for resume entries
+    '''
+    return jsonify(_collect_spelling_results())

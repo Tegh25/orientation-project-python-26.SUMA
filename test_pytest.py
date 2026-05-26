@@ -222,3 +222,26 @@ def test_user_info_invalid_phone():
     response = client.put('/resume/user_info', json=invalid_phone_info)
     assert response.status_code == 400
     assert "Phone number must include international country code" in response.json["error"]
+
+def test_spellcheck_endpoint():
+    '''
+    Check that spelling corrections are returned for resume entries
+    '''
+    client = app.test_client()
+    example_experience = {
+        "title": "Tester",
+        "company": "Speling Co",
+        "start_date": "October 2022",
+        "end_date": "Present",
+        "description": "Teh dog",
+        "logo": "example-logo.png"
+    }
+
+    client.post('/resume/experience', json=example_experience)
+
+    response = client.get('/resume/spellcheck')
+    assert response.status_code == 200
+    assert any(
+        item["before"] == "Teh dog" and item["after"] == "The dog"
+        for item in response.json
+    )
