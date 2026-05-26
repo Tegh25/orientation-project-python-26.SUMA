@@ -245,3 +245,45 @@ def test_spellcheck_endpoint():
         item["before"] == "Teh dog" and item["after"] == "The dog"
         for item in response.json
     )
+def test_update_experience():
+    '''
+    Update an experience by index using PUT
+    '''
+    client = app.test_client()
+
+    new_experience = {
+        "title": "Original Title",
+        "company": "Original Company",
+        "start_date": "October 2022",
+        "end_date": "Present",
+        "description": "Original description",
+        "logo": "example-logo.png"
+    }
+
+    post_response = client.post('/resume/experience', json=new_experience)
+    assert post_response.status_code == 200
+    item_id = post_response.json['id']
+
+    updated_experience = {
+        "id": item_id,
+        "title": "Updated Title",
+        "company": "Updated Company",
+        "start_date": "October 2022",
+        "end_date": "Present",
+        "description": "Updated description",
+        "logo": "example-logo.png"
+    }
+
+    put_response = client.put('/resume/experience', json=updated_experience)
+    assert put_response.status_code == 200
+    assert put_response.json["id"] == item_id
+
+    get_response = client.get('/resume/experience')
+    assert get_response.json[item_id] == {
+        "title": "Updated Title",
+        "company": "Updated Company",
+        "start_date": "October 2022",
+        "end_date": "Present",
+        "description": "Updated description",
+        "logo": "example-logo.png"
+    }

@@ -48,13 +48,15 @@ def hello_world():
     return jsonify({"message": "Hello, World!"})
 
 
-@app.route('/resume/experience', methods=['GET', 'POST', 'DELETE'])
+@app.route('/resume/experience', methods=['GET', 'POST', 'PUT', 'DELETE'])
 def experience():
     '''
     Handle experience requests
     '''
+    response = {}
+    status = 200
     if request.method == 'GET':
-        experience_list = [
+        response = [
             {
                 "title": exp.title,
                 "company": exp.company,
@@ -65,9 +67,7 @@ def experience():
             }
             for exp in data['experience']
         ]
-        return jsonify(experience_list)
-
-    if request.method == 'POST':
+    elif request.method == 'POST':
         new_experience = Experience(
             title=request.json['title'],
             company=request.json['company'],
@@ -77,12 +77,41 @@ def experience():
             logo=request.json['logo']
         )
         data['experience'].append(new_experience)
-        index = len(data['experience']) - 1
-        return jsonify({"id": index})
-
-    if request.method == 'DELETE':
-        return _delete_experience(request.get_json())
-    return jsonify({})
+        response = {"id": len(data['experience']) - 1}
+    elif request.method == 'PUT':
+        body = request.get_json()
+        if not body or 'id' not in body:
+            response = {"error": "ID is required for update"}
+            status = 400
+        else:
+            try:
+                item_id = int(body['id'])
+            except (ValueError, TypeError):
+                response = {"error": "ID must be an integer"}
+                status = 400
+            else:
+                if item_id < 0 or item_id >= len(data['experience']):
+                    response = {"error": "ID is out of range"}
+                    status = 400
+                else:
+                    try:
+                        updated_experience = Experience(
+                            title=body['title'],
+                            company=body['company'],
+                            start_date=body['start_date'],
+                            end_date=body['end_date'],
+                            description=body['description'],
+                            logo=body['logo']
+                        )
+                    except KeyError as exc:
+                        response = {"error": f"Missing field: {exc}"}
+                        status = 400
+                    else:
+                        data['experience'][item_id] = updated_experience
+                        response = {"id": item_id}
+    elif request.method == 'DELETE':
+        response, status = _delete_experience(request.get_json())
+    return jsonify(response), status
 
 
 @app.route('/resume/experience/<int:index>', methods=['GET'])
@@ -161,15 +190,15 @@ def skill(): # pylint: disable=too-many-return-statements
 
 def _delete_experience(body):
     if not body or 'id' not in body:
-        return jsonify({"error": "ID is required for deletion"}), 400
+        return {"error": "ID is required for deletion"}, 400
     try:
         item_id = int(body['id'])
     except (ValueError, TypeError):
-        return jsonify({"error": "ID must be an integer"}), 400
+        return {"error": "ID must be an integer"}, 400
     if item_id < 0 or item_id >= len(data["experience"]):
-        return jsonify({"error": "ID is out of range"}), 400
+        return {"error": "ID is out of range"}, 400
     data["experience"].pop(item_id)
-    return jsonify({"deleted": item_id}), 200
+    return {"deleted": item_id}, 200
 
 def _delete_skill(body):
     if not body or 'id' not in body:
