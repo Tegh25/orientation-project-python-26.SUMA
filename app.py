@@ -175,7 +175,7 @@ def _post_skill():
     return jsonify({"id": len(data["skill"]) - 1})
 
 
-@app.route('/resume/skill', methods=['GET', 'POST', 'DELETE'])
+@app.route('/resume/skill', methods=['GET', 'POST', 'PUT', 'DELETE'])
 def skill(): # pylint: disable=too-many-return-statements
     '''
     Handles Skill requests
@@ -184,6 +184,26 @@ def skill(): # pylint: disable=too-many-return-statements
         return _get_skill()
     if request.method == 'POST':
         return _post_skill()
+    if request.method == 'PUT':
+        body = request.get_json()
+        if not body or 'id' not in body:
+            return jsonify({"error": "ID is required for update"}), 400
+        try:
+            item_id = int(body['id'])
+        except (ValueError, TypeError):
+            return jsonify({"error": "ID must be an integer"}), 400
+        if item_id < 0 or item_id >= len(data["skill"]):
+            return jsonify({"error": "ID is out of range"}), 400
+        try:
+            updated_skill = Skill(
+                name=body['name'],
+                proficiency=body['proficiency'],
+                logo=body['logo']
+            )
+        except KeyError as exc:
+            return jsonify({"error": f"Missing field: {exc}"}), 400
+        data["skill"][item_id] = updated_skill
+        return jsonify({"id": item_id})
     if request.method == 'DELETE':
         return _delete_skill(request.get_json())
     return jsonify({})

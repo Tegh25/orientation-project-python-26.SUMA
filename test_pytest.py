@@ -287,3 +287,37 @@ def test_update_experience():
         "description": "Updated description",
         "logo": "example-logo.png"
     }
+
+def test_update_skill():
+    '''
+    Update a skill by index using PUT
+    '''
+    client = app.test_client()
+
+    new_skill = {
+        "name": "Original Skill",
+        "proficiency": "1-2 years",
+        "logo": "example-logo.png"
+    }
+
+    post_response = client.post('/resume/skill', json=new_skill)
+    assert post_response.status_code == 200
+    item_id = post_response.json['id']
+
+    updated_skill = {
+        "id": item_id,
+        "name": "Updated Skill",
+        "proficiency": "2-4 years",
+        "logo": "example-logo.png"
+    }
+
+    put_response = client.put('/resume/skill', json=updated_skill)
+    assert put_response.status_code == 200
+    assert put_response.json["id"] == item_id
+
+    get_response = client.get('/resume/skill')
+    assert get_response.json[item_id] == {
+        "name": "Updated Skill",
+        "proficiency": "2-4 years",
+        "logo": "example-logo.png"
+    }
