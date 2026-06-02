@@ -4,9 +4,11 @@ Flask Application
 import re
 from dataclasses import asdict
 from flask import Flask, jsonify, request
+from spellchecker import SpellChecker
 from models import Experience, Education, Skill, UserInfo
 
 app = Flask(__name__)
+spellchecker = SpellChecker()
 
 data = {
     "user_info": UserInfo(
@@ -46,46 +48,19 @@ def hello_world():
     return jsonify({"message": "Hello, World!"})
 
 
-@app.route('/resume/experience', methods=['GET', 'POST', 'DELETE'])
+@app.route('/resume/experience', methods=['GET', 'POST', 'PUT', 'DELETE'])
 def experience():
     '''
     Handle experience requests
     '''
-    if request.method == 'GET':
-        experience_list = [
-            {
-                "title": exp.title,
-                "company": exp.company,
-                "start_date": exp.start_date,
-                "end_date": exp.end_date,
-                "description": exp.description,
-                "logo": exp.logo
-            }
-            for exp in data['experience']
-        ]
-        return jsonify(experience_list)
-
-    if request.method == 'POST':
-        req = request.get_json()
-
-        required_fields = ["title", "company", "start_date", "end_date", "description", "logo"]
-        if not req or not isinstance(req, dict) or any(
-            field not in req for field in required_fields
-        ):
-            return jsonify({"error": "Missing required fields"}), 400
-
-        try:
-            new_experience = Experience(**req)
-        except TypeError:
-            return jsonify({"error": "Invalid format"}), 400
-
-        data['experience'].append(new_experience)
-        index = len(data['experience']) - 1
-        return jsonify({"id": index})
-
-    if request.method == 'DELETE':
-        return _delete_experience(request.get_json())
-    return jsonify({})
+    handlers = {
+        'GET': _get_experience,
+        'POST': _post_experience,
+        'PUT': _put_experience,
+        'DELETE': lambda: _delete_experience(request.get_json()),
+    }
+    response, status = handlers[request.method]()
+    return jsonify(response), status
 
 
 @app.route('/resume/experience/<int:index>', methods=['GET'])
@@ -104,6 +79,67 @@ def get_experience(index):
             "logo": exp.logo
         })
     return jsonify({"error": "Experience not found"}), 404
+
+
+def _get_experience():
+    return [
+        {
+            "title": exp.title,
+            "company": exp.company,
+            "start_date": exp.start_date,
+            "end_date": exp.end_date,
+            "description": exp.description,
+            "logo": exp.logo
+        }
+        for exp in data['experience']
+    ], 200
+
+
+def _post_experience():
+    req = request.get_json()
+
+    required_fields = ["title", "company", "start_date", "end_date", "description", "logo"]
+    if not req or not isinstance(req, dict) or any(
+        field not in req for field in required_fields
+    ):
+        return {"error": "Missing required fields"}, 400
+
+    try:
+        new_experience = Experience(**req)
+    except TypeError:
+        return {"error": "Invalid format"}, 400
+
+    data['experience'].append(new_experience)
+    return {"id": len(data['experience']) - 1}, 200
+
+
+def _put_experience():
+    body = request.get_json()
+    if not body or 'id' not in body:
+        return {"error": "ID is required for update"}, 400
+
+    try:
+        item_id = int(body['id'])
+    except (ValueError, TypeError):
+        return {"error": "ID must be an integer"}, 400
+
+    if item_id < 0 or item_id >= len(data['experience']):
+        return {"error": "ID is out of range"}, 400
+
+    try:
+        updated_experience = Experience(
+            title=body['title'],
+            company=body['company'],
+            start_date=body['start_date'],
+            end_date=body['end_date'],
+            description=body['description'],
+            logo=body['logo']
+        )
+    except KeyError as exc:
+        return {"error": f"Missing field: {exc}"}, 400
+
+    data['experience'][item_id] = updated_experience
+    return {"id": item_id}, 200
 
 def _get_education(index):
     if index is not None:
@@ -208,7 +244,7 @@ def _post_skill():
     return jsonify({"id": len(data["skill"]) - 1})
 
 
-@app.route('/resume/skill', methods=['GET', 'POST', 'DELETE'])
+@app.route('/resume/skill', methods=['GET', 'POST', 'PUT', 'DELETE'])
 def skill(): # pylint: disable=too-many-return-statements
     '''
     Handles Skill requests
@@ -217,6 +253,26 @@ def skill(): # pylint: disable=too-many-return-statements
         return _get_skill()
     if request.method == 'POST':
         return _post_skill()
+    if request.method == 'PUT':
+        body = request.get_json()
+        if not body or 'id' not in body:
+            return jsonify({"error": "ID is required for update"}), 400
+        try:
+            item_id = int(body['id'])
+        except (ValueError, TypeError):
+            return jsonify({"error": "ID must be an integer"}), 400
+        if item_id < 0 or item_id >= len(data["skill"]):
+            return jsonify({"error": "ID is out of range"}), 400
+        try:
+            updated_skill = Skill(
+                name=body['name'],
+                proficiency=body['proficiency'],
+                logo=body['logo']
+            )
+        except KeyError as exc:
+            return jsonify({"error": f"Missing field: {exc}"}), 400
+        data["skill"][item_id] = updated_skill
+        return jsonify({"id": item_id})
     if request.method == 'DELETE':
         return _delete_skill(request.get_json())
     return jsonify({})
@@ -234,15 +290,15 @@ def _delete_education(body):
     return jsonify({"deleted": item_id}), 200
 def _delete_experience(body):
     if not body or 'id' not in body:
-        return jsonify({"error": "ID is required for deletion"}), 400
+        return {"error": "ID is required for deletion"}, 400
     try:
         item_id = int(body['id'])
     except (ValueError, TypeError):
-        return jsonify({"error": "ID must be an integer"}), 400
+        return {"error": "ID must be an integer"}, 400
     if item_id < 0 or item_id >= len(data['experience']):
-        return jsonify({"error": "ID out of range"}), 404
+        return {"error": "ID out of range"}, 404
     data['experience'].pop(item_id)
-    return jsonify({"deleted": item_id}), 200
+    return {"deleted": item_id}, 200
 
 def _delete_skill(body):
     if not body or 'id' not in body:
@@ -289,3 +345,52 @@ def user_info():
             "data": asdict(data['user_info'])
         })
     return jsonify({})
+
+
+def _apply_spelling_correction(word):
+    correction = spellchecker.correction(word)
+    if correction is None:
+        return word
+    if word.isupper():
+        return correction.upper()
+    if word[0].isupper():
+        return correction.capitalize()
+    return correction
+
+
+def _correct_text_spelling(text):
+    return re.sub(r"[A-Za-z]+", lambda m: _apply_spelling_correction(m.group(0)), text)
+
+
+def _collect_spelling_results():
+    results = []
+
+    def check_value(value):
+        if not isinstance(value, str):
+            return
+        corrected = _correct_text_spelling(value)
+        if corrected != value:
+            results.append({"before": value, "after": corrected})
+
+    for exp in data["experience"]:
+        check_value(exp.title)
+        check_value(exp.company)
+        check_value(exp.description)
+
+    for edu in data["education"]:
+        check_value(edu.course)
+        check_value(edu.school)
+
+    for skill_entry in data["skill"]:
+        check_value(skill_entry.name)
+        check_value(skill_entry.proficiency)
+
+    return results
+
+
+@app.route('/resume/spellcheck', methods=['GET'])
+def spellcheck():
+    '''
+    Returns spelling correction suggestions for resume entries
+    '''
+    return jsonify(_collect_spelling_results())

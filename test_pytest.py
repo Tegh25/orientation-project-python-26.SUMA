@@ -313,6 +313,105 @@ def test_user_info_invalid_phone():
     assert response.status_code == 400
     assert "Phone number must include international country code" in response.json["error"]
 
+def test_spellcheck_endpoint():
+    '''
+    Check that spelling corrections are returned for resume entries
+    '''
+    client = app.test_client()
+    example_experience = {
+        "title": "Tester",
+        "company": "Speling Co",
+        "start_date": "October 2022",
+        "end_date": "Present",
+        "description": "Teh dog",
+        "logo": "example-logo.png"
+    }
+
+    client.post('/resume/experience', json=example_experience)
+
+    response = client.get('/resume/spellcheck')
+    assert response.status_code == 200
+    assert any(
+        item["before"] == "Teh dog" and item["after"] == "The dog"
+        for item in response.json
+    )
+def test_update_experience():
+    '''
+    Update an experience by index using PUT
+    '''
+    client = app.test_client()
+
+    new_experience = {
+        "title": "Original Title",
+        "company": "Original Company",
+        "start_date": "October 2022",
+        "end_date": "Present",
+        "description": "Original description",
+        "logo": "example-logo.png"
+    }
+
+    post_response = client.post('/resume/experience', json=new_experience)
+    assert post_response.status_code == 200
+    item_id = post_response.json['id']
+
+    updated_experience = {
+        "id": item_id,
+        "title": "Updated Title",
+        "company": "Updated Company",
+        "start_date": "October 2022",
+        "end_date": "Present",
+        "description": "Updated description",
+        "logo": "example-logo.png"
+    }
+
+    put_response = client.put('/resume/experience', json=updated_experience)
+    assert put_response.status_code == 200
+    assert put_response.json["id"] == item_id
+
+    get_response = client.get('/resume/experience')
+    assert get_response.json[item_id] == {
+        "title": "Updated Title",
+        "company": "Updated Company",
+        "start_date": "October 2022",
+        "end_date": "Present",
+        "description": "Updated description",
+        "logo": "example-logo.png"
+    }
+
+def test_update_skill():
+    '''
+    Update a skill by index using PUT
+    '''
+    client = app.test_client()
+
+    new_skill = {
+        "name": "Original Skill",
+        "proficiency": "1-2 years",
+        "logo": "example-logo.png"
+    }
+
+    post_response = client.post('/resume/skill', json=new_skill)
+    assert post_response.status_code == 200
+    item_id = post_response.json['id']
+
+    updated_skill = {
+        "id": item_id,
+        "name": "Updated Skill",
+        "proficiency": "2-4 years",
+        "logo": "example-logo.png"
+    }
+
+    put_response = client.put('/resume/skill', json=updated_skill)
+    assert put_response.status_code == 200
+    assert put_response.json["id"] == item_id
+
+    get_response = client.get('/resume/skill')
+    assert get_response.json[item_id] == {
+        "name": "Updated Skill",
+        "proficiency": "2-4 years",
+        "logo": "example-logo.png"
+    }
+
 def test_experience_missing_field():
     '''
     Test POST request to experience with missing fields
