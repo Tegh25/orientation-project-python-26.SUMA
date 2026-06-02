@@ -75,6 +75,53 @@ def test_education_by_index():
     assert response.json == expected_education
 
 
+def test_update_education():
+    '''
+    Add an education, update it using PUT and the returned index, and verify
+    the updated data is stored.
+    '''
+    client = app.test_client()
+
+    original_education = {
+        "course": "Physics",
+        "school": "State College",
+        "start_date": "January 2020",
+        "end_date": "May 2023",
+        "grade": "75%",
+        "logo": "example-logo.png"
+    }
+
+    post_response = client.post('/resume/education', json=original_education)
+    assert post_response.status_code == 200
+    item_id = post_response.json['id']
+
+    updated_education = {
+        "id": item_id,
+        "course": "Applied Physics",
+        "school": "State College",
+        "start_date": "January 2020",
+        "end_date": "May 2023",
+        "grade": "82%",
+        "logo": "updated-logo.png"
+    }
+
+    put_response = client.put('/resume/education', json=updated_education)
+    assert put_response.status_code == 200
+    assert put_response.json["id"] == item_id
+    assert put_response.json["data"] == {
+        "course": updated_education["course"],
+        "school": updated_education["school"],
+        "start_date": updated_education["start_date"],
+        "end_date": updated_education["end_date"],
+        "grade": updated_education["grade"],
+        "logo": updated_education["logo"]
+    }
+
+    get_response = client.get(f'/resume/education/{item_id}')
+    assert get_response.status_code == 200
+    assert get_response.json == put_response.json["data"]
+
+
 def test_skill():
     '''
     Add a new skill and then get all skills. 

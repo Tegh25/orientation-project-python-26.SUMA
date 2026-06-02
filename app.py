@@ -128,7 +128,39 @@ def _post_education():
 
     data['education'].append(education_entry)
     return jsonify({'id': len(data['education']) - 1})
-@app.route('/resume/education', methods=['GET', 'POST', 'DELETE'])
+
+def _put_education():
+    req = request.get_json()
+    required_fields = ["id", "course", "school", "start_date", "end_date", "grade", "logo"]
+    if not req or not isinstance(req, dict) or any(
+        field not in req for field in required_fields
+    ):
+        return jsonify({"error": "Missing required fields"}), 400
+
+    try:
+        item_id = int(req["id"])
+    except (ValueError, TypeError):
+        return jsonify({"error": "ID must be an integer"}), 400
+
+    if item_id < 0 or item_id >= len(data["education"]):
+        return jsonify({"error": "ID is out of range"}), 400
+
+    try:
+        updated_education = Education(
+            course=req["course"],
+            school=req["school"],
+            start_date=req["start_date"],
+            end_date=req["end_date"],
+            grade=req["grade"],
+            logo=req["logo"],
+        )
+    except TypeError:
+        return jsonify({"error": "Invalid format"}), 400
+
+    data["education"][item_id] = updated_education
+    return jsonify({"id": item_id, "data": asdict(updated_education)})
+
+@app.route('/resume/education', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @app.route('/resume/education/<int:index>', methods=['GET'])
 def education(index=None):
     '''
@@ -140,6 +172,8 @@ def education(index=None):
         return _post_education()
     if request.method == 'DELETE':
         return _delete_education(request.get_json())
+    if request.method == 'PUT':
+        return _put_education()
 
     return jsonify({})
 
