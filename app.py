@@ -53,68 +53,13 @@ def experience():
     '''
     Handle experience requests
     '''
-    response = {}
-    status = 200
-    if request.method == 'GET':
-        response = [
-            {
-                "title": exp.title,
-                "company": exp.company,
-                "start_date": exp.start_date,
-                "end_date": exp.end_date,
-                "description": exp.description,
-                "logo": exp.logo
-            }
-            for exp in data['experience']
-        ]
-    elif request.method == 'POST':
-        req = request.get_json()
-
-        required_fields = ["title", "company", "start_date", "end_date", "description", "logo"]
-        if not req or not isinstance(req, dict) or any(
-            field not in req for field in required_fields
-        ):
-            return jsonify({"error": "Missing required fields"}), 400
-
-        try:
-            new_experience = Experience(**req)
-        except TypeError:
-            return jsonify({"error": "Invalid format"}), 400
-        data['experience'].append(new_experience)
-        response = {"id": len(data['experience']) - 1}
-    elif request.method == 'PUT':
-        body = request.get_json()
-        if not body or 'id' not in body:
-            response = {"error": "ID is required for update"}
-            status = 400
-        else:
-            try:
-                item_id = int(body['id'])
-            except (ValueError, TypeError):
-                response = {"error": "ID must be an integer"}
-                status = 400
-            else:
-                if item_id < 0 or item_id >= len(data['experience']):
-                    response = {"error": "ID is out of range"}
-                    status = 400
-                else:
-                    try:
-                        updated_experience = Experience(
-                            title=body['title'],
-                            company=body['company'],
-                            start_date=body['start_date'],
-                            end_date=body['end_date'],
-                            description=body['description'],
-                            logo=body['logo']
-                        )
-                    except KeyError as exc:
-                        response = {"error": f"Missing field: {exc}"}
-                        status = 400
-                    else:
-                        data['experience'][item_id] = updated_experience
-                        response = {"id": item_id}
-    elif request.method == 'DELETE':
-        response, status = _delete_experience(request.get_json())
+    handlers = {
+        'GET': _get_experience,
+        'POST': _post_experience,
+        'PUT': _put_experience,
+        'DELETE': lambda: _delete_experience(request.get_json()),
+    }
+    response, status = handlers[request.method]()
     return jsonify(response), status
 
 
@@ -134,6 +79,67 @@ def get_experience(index):
             "logo": exp.logo
         })
     return jsonify({"error": "Experience not found"}), 404
+
+
+def _get_experience():
+    return [
+        {
+            "title": exp.title,
+            "company": exp.company,
+            "start_date": exp.start_date,
+            "end_date": exp.end_date,
+            "description": exp.description,
+            "logo": exp.logo
+        }
+        for exp in data['experience']
+    ], 200
+
+
+def _post_experience():
+    req = request.get_json()
+
+    required_fields = ["title", "company", "start_date", "end_date", "description", "logo"]
+    if not req or not isinstance(req, dict) or any(
+        field not in req for field in required_fields
+    ):
+        return {"error": "Missing required fields"}, 400
+
+    try:
+        new_experience = Experience(**req)
+    except TypeError:
+        return {"error": "Invalid format"}, 400
+
+    data['experience'].append(new_experience)
+    return {"id": len(data['experience']) - 1}, 200
+
+
+def _put_experience():
+    body = request.get_json()
+    if not body or 'id' not in body:
+        return {"error": "ID is required for update"}, 400
+
+    try:
+        item_id = int(body['id'])
+    except (ValueError, TypeError):
+        return {"error": "ID must be an integer"}, 400
+
+    if item_id < 0 or item_id >= len(data['experience']):
+        return {"error": "ID is out of range"}, 400
+
+    try:
+        updated_experience = Experience(
+            title=body['title'],
+            company=body['company'],
+            start_date=body['start_date'],
+            end_date=body['end_date'],
+            description=body['description'],
+            logo=body['logo']
+        )
+    except KeyError as exc:
+        return {"error": f"Missing field: {exc}"}, 400
+
+    data['experience'][item_id] = updated_experience
+    return {"id": item_id}, 200
 
 def _get_education(index):
     if index is not None:
