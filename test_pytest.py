@@ -93,6 +93,49 @@ def test_skill():
     response = app.test_client().get('/resume/skill')
     assert response.json[item_id] == example_skill
 
+def test_delete_education():
+    '''
+    Add new education and then delete it using the id. 
+
+    Check that the count of education entries is the same as before adding and deletion. 
+
+    And verify that the return does not contain the deleted education entry.
+    '''
+    client = app.test_client()
+
+    example_education = {
+        "course": "Testing Engineering Education",
+        "school": "NYU of Education",
+        "start_date": "October 2022",
+        "end_date": "August 2025",
+        "grade": "90%",
+        "logo": "example-logo.png"
+    }
+
+    before = client.get('/resume/education')
+    assert before.status_code == 200
+    before_count = len(before.json)
+
+    post_response = client.post('/resume/education', json=example_education)
+    assert post_response.status_code == 200
+    item_id = post_response.json['id']
+
+    delete_response = client.delete('/resume/education', json={"id": item_id})
+    assert delete_response.status_code == 200
+    assert delete_response.json["deleted"] == item_id
+
+    after = client.get('/resume/education')
+    assert after.status_code == 200
+    assert len(after.json) == before_count
+    assert not any(
+        edu for edu in after.json if edu['course'] == example_education['course']
+        and edu['school'] == example_education['school']
+        and edu['start_date'] == example_education['start_date']
+        and edu['end_date'] == example_education['end_date']
+        and edu['grade'] == example_education['grade']
+        and edu['logo'] == example_education['logo']
+    )
+
 def test_delete_skill():
     '''
     Add new skill and then delete it using the id. 

@@ -128,8 +128,7 @@ def _post_education():
 
     data['education'].append(education_entry)
     return jsonify({'id': len(data['education']) - 1})
-
-@app.route('/resume/education', methods=['GET', 'POST'])
+@app.route('/resume/education', methods=['GET', 'POST', 'DELETE'])
 @app.route('/resume/education/<int:index>', methods=['GET'])
 def education(index=None):
     '''
@@ -137,9 +136,10 @@ def education(index=None):
     '''
     if request.method == 'GET':
         return _get_education(index)
-
     if request.method == 'POST':
         return _post_education()
+    if request.method == 'DELETE':
+        return _delete_education(request.get_json())
 
     return jsonify({})
 
@@ -187,6 +187,17 @@ def skill(): # pylint: disable=too-many-return-statements
         return _delete_skill(request.get_json())
     return jsonify({})
 
+def _delete_education(body):
+    if not body or 'id' not in body:
+        return jsonify({"error": "ID is required for deletion"}), 400
+    try:
+        item_id = int(body['id'])
+    except (ValueError, TypeError):
+        return jsonify({"error": "ID must be an integer"}), 400
+    if item_id < 0 or item_id >= len(data['education']):
+        return jsonify({"error": "ID out of range"}), 404
+    data['education'].pop(item_id)
+    return jsonify({"deleted": item_id}), 200
 def _delete_experience(body):
     if not body or 'id' not in body:
         return jsonify({"error": "ID is required for deletion"}), 400
@@ -194,9 +205,9 @@ def _delete_experience(body):
         item_id = int(body['id'])
     except (ValueError, TypeError):
         return jsonify({"error": "ID must be an integer"}), 400
-    if item_id < 0 or item_id >= len(data["experience"]):
-        return jsonify({"error": "ID is out of range"}), 400
-    data["experience"].pop(item_id)
+    if item_id < 0 or item_id >= len(data['experience']):
+        return jsonify({"error": "ID out of range"}), 404
+    data['experience'].pop(item_id)
     return jsonify({"deleted": item_id}), 200
 
 def _delete_skill(body):
